@@ -93,7 +93,7 @@ class sourceFFT(self):
         """
     def __init__(self, systemConfig):
 
-        super(Keuper, self).__init__(systemConfig)
+        super(sourceFFT, self).__init__(systemConfig)
 
         nt = self.nt
         dt = self.dt
@@ -115,7 +115,7 @@ class iFFT(self):
         """
     def __init__(self, systemConfig):
 
-        super(Keuper, self).__init__(systemConfig)
+        super(iFFT, self).__init__(systemConfig)
 
         nTSamp = self.nTSamp
         nx = self.nx
