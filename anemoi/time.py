@@ -1,155 +1,130 @@
-from .discretization import BaseDiscretization
-
+from .meta import AttributeMapper
 import numpy as np
-import scipy.sparse
 
-class Time(BaseDiscretization):
+class BaseTime(AttributeMapper):
 
     initMap = {
-    #   Argument        Required    Rename as ...   Store as type
-        'nTsamp':       (False,     '_nTsamp',        np.int64),
-        'f_max':        (True,      None,           np.complex128),
-        'source_freq':  (True,      None,           np.complex128),
+        #   Argument        Required    Rename as ...   Store as type
+        'nTSamp':       (False,     '_nTSamp',        np.int64),
+        'fMax':        (True,      None,           np.complex128),
+        'sourceFreq':  (True,      None,           np.complex128),
         'tau':          (False,     '_tau',         np.float64),
+        'dx':           (False,     '_dx',          np.float64),
+        'dz':           (False,     '_dz',          np.float64),
+        'nx':           (True,      None,           np.int64),
+        'nz':           (True,      None,           np.int64),
     }
 
-    def _Forward(self):
+    @property
+    def dx(self):
+        return getattr(self, '_dx', 1.)
+
+    @property
+    def dz(self):
+        return getattr(self, '_dz', 1.)
+
+    @property
+    def nTSamp(self):
+        return getattr(self, '_nTSamp', 256)
+
+    @property
+    def tau(self):
+        return getattr(self, '_tau', 0.4)
+
+class Forward(BaseTime):
     """
     Takes the time parameters that you are interested in and gives you suggested frequency
     range.
     """
+    def __init__(self, systemConfig):
 
-    nx = self.nx
-    nz = self.nz
-    dims = (nz, nx)
-    nrows = nx*nz
+        super(Forward, self).__init__(systemConfig)
 
-    dx = self.dx
-    dz = self.dz
+        fMax = self.fMax
+        nf = self.nf
+        df = self.df
 
-    #determine the maximum length of the Model
-    x_max = (nx-1)*dx
-    z_max = (nz-1)*dz
-    L_max = np.max([xmax,zmax])
+    def __call__(self):
 
-    c = self.c
-    c_min = self.c.min()
+        fMin = fMax - ((nf - 1) * df)
 
-    #calculate the smallest wavelength, in meters
-    lambda_min = c_min/f_max
+        freqRange = np.arange(fMin,fMax + self.df,self.df)
 
-    #determine the maximum modelled time from the maximum length of the grid
-    #and the minimum velocity
+        return freqRange
 
-    t_max = 2*(L_max/c_min)
-
-    #time-domain damping factor
-
-    f_damp = self.tau
-    tau = f_damp*t_max
-
-    #determine the frequency interval from the maximum modelled time
-
-    df= 1/t_max
-
-    #determine the number of frequencies
-    f_max = self.f_max
-    nf = f_max/df
-
-    #determine the sampling interval and number of time domain samples
-
-    dt = 1 / (2*f_max)
-    nt = t_max/dt
-
-    f_min = f_max - ((nf-1)*df)
-
-    freq_range=np.arange(f_min,f_max+df,df)
-
-    return freq_range
-
-    def _Keuper(self):
+class Keuper(BaseTime):
     """
     Takes the time paramters that you are interested in and generates a time-domain
     keuper wavelet.
     """
+    def __init__(self, systemConfig):
 
-    nt = self.nt
-    freq_range=self._freq_range
-    dt = self.dt
-    source_freq = self.source_freq
-    excursions=1.
+        super(Keuper, self).__init__(systemConfig)
 
-    def Get_K_Wavelet(source_freq,dt,excursions)
+        nt = self.nt
+        dt = self.dt
+        sourceFreq = self.sourceFreq
+        excursions=1.
 
-    m = (excursions+2)/excursions
-    nsrc = (1./source_freq)/dt
-    delta = excursions * np.pi * source_freq
-    loop_vals = np.arange(1,nsrc+1,1)
+    def __call__(self):
 
-    for i in range(1,nsrc+1):
+        def getKWavelet(sourceFreq,dt,excursions):
 
-        tsrc(i) = (i-1.)*dt
-        source(i,1) = (delta * np.cos(delta*tsrc(i))) - (delta*np.cos(m*delta*tsrc(i)))
-    return source
+            m = (excursions + 2) / excursions
+            nsrc = (1. / sourceFreq) / dt
+            delta = excursions * np.pi * sourceFreq
+            loopVals = np.arange(1,nsrc + 1,1)
 
-    temp_source = Get_K_Wavelet(source_freq,dt,excursions)
-    time_source = np.zeros(nt,1)
-    time_source[:len(temp_source)] = temp_source[:]
+            for i in range(1,nsrc+1):
 
-    return time_source
+                tsrc[i-1] = (i - 1.) * dt
+                source[i-1] = (delta * np.cos(delta *tsrc[i-1])) - (delta *np.cos(m * delta *tsrc[i-1]))
+            return source
 
-    def _Source_FFT(self):
-    """
-    Takes the time domain wavelet and converts to frequency domain
-    """
+        tempSource = getKWavelet(sourceFreq,dt,excursions)
+        timeSource = np.zeros(nt,1)
+        timeSource[:len(tempSource)] = tempSource[:]
 
-    time_source = self.time_source
-    nt = self.nt
-    nTsamp = self.nTsamp
-    freq_source=np.fft.fft(time_source,[nTsamp])
-    freq_source[:(nt/2)+1]=0
+        return timeSource
 
-    return freq_source
+class sourceFFT(self):
+        """
+        Takes the time domain wavelet and converts to frequency domain
+        """
+    def __init__(self, systemConfig):
+
+        super(Keuper, self).__init__(systemConfig)
+
+        nt = self.nt
+        dt = self.dt
+        nTSamp = self.nTSamp
+
+    def __call__(self, timeSource):
+
+        freqSource=np.fft.fft(timeSource,[nTSamp])
+        freqSource[:(nt / 2) + 1]=0
+
+        return freqSource
 
 
-    def _IFFT(self):
-    """
-    Takes the frquency domain pressure field and converts to the time domain
-    pressure field. Data input has dimensions(f,z,x) where f is the modelled frequency
-    corresponding to each z by x array of pressure values.
-    """
+class iFFT(self):
+        """
+        Takes the frquency domain pressure field and converts to the time domain
+        pressure field. Data input has dimensions(f,z,x) where f is the modelled frequency
+        corresponding to each z by x array of pressure values.
+        """
+    def __init__(self, systemConfig):
 
-    freqs = self.freq_range
-    df = self.df
-    nTsamp = self.nTsamp
+        super(Keuper, self).__init__(systemConfig)
 
-    u = u.reshape(u.shape[0],-1)
+        nTSamp = self.nTSamp
+        nx = self.nx
+        nz = self.nz
 
-    u_t = np.fft.ifft(u,[nTsamp])
-    u_t = u_t.reshape(-1,nz,nx)
+    def __call__(self, u):
 
-    return u_t
+        uF = u.reshape(u.shape[0],-1)
+        uT = np.fft.ifft(uF,[nTSamp])
+        uT = uT.reshape(-1,nz,nx)
 
-@property
-def freq_range(self):
-    if getattr(self, '_freq_range', None) is None:
-        self._freq_range = self._Forward()
-    return self._freq_range
-
-@property
-def time_source(self):
-    if getattr(self, '_time_source', None) is None:
-        self._time_source = self._Keuper()
-    return self._time_source
-
-@property
-def freq_source(self):
-    if getattr(self, '_freq_source', None) is None:
-        self._freq_source = self._Source_FFT()
-    return self._freq_source
-
-@property
-def u_t(self):
-    if getattr(self, '_u_t', None) is None:
-        self._u_t = self._IFFT()
-    return self._u_t
+        return uT
