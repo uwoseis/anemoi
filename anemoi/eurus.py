@@ -107,15 +107,15 @@ class Eurus(BaseDiscretization):
         # Diagonal offsets for the sparse matrix formation
 
         offsets = {
-            'GG':   -nf -ns,
-            'HH':   -nf    ,
-            'II':   -nf +ns,
+            'GG':   +nf -ns,
+            'HH':   +nf    ,
+            'II':   +nf +ns,
             'DD':       -ns,
             'EE':         0,
             'FF':       +ns,
-            'AA':   +nf -ns,
-            'BB':   +nf    ,
-            'CC':   +nf +ns,
+            'AA':   -nf -ns,
+            'BB':   -nf    ,
+            'CC':   -nf +ns,
         }
 
         def prepareDiagonals(diagonals):
