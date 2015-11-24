@@ -234,16 +234,17 @@ class Eurus(BaseDiscretization):
 
         # 9-point fd star
 
-        wm1 = 0.6291844;
-        wm2 = 0.3708126;
-        w1 = 0.4258673;
+        wm1 = 0.6291844
+        wm2 = 0.3708126
+        w1 = 0.4258673
+        #w1 = 0.
 
         # Mass Averaging Term
 
         # From Operto et al.(2009), anti-limped mass is calculted from 9 ponts and applied
         # ONLY to the diagonal terms
 
-        K_avg = (wm1*K_EE) + ((wm2/4)*(K_BB + K_DD + K_FF + K_HH)) + (((1-wm1-wm2)/4)*(K_AA + K_CC + K_GG + K_II))
+        K_avg = (wm1*K_EE) + ((wm2/4)*(K_BB + K_DD + K_FF + K_HH)) + (((1-wm1-wm2 )/4)*(K_AA + K_CC + K_GG + K_II))
 
         # For now, set eps and delta to be constant
 
@@ -389,16 +390,174 @@ class Eurus(BaseDiscretization):
 
             return diagonals
 
-        M1_diagonals = generateDiagonals(K_avg, Ax, Az, Bx, Bz)
+        def generateTiltedDiagonals(massTerm, coeff1x, coeff1z, coeff2x, coeff2z):
+
+            diagonals = {
+                'GG':  w1
+                        * (
+                          (((     L_x4) * coeff1x) * (   b_SQ3_x))
+                        + (((-1 * L_x4) * coeff2x) * (   b_SQ3_z))
+                        + (((-1 * L_z4) * coeff1z) * (   b_SQ3_x))
+                        + (((     L_z4) * coeff2z) * (   b_SQ3_z))
+                          )
+                        + (1-w1)
+                        * 0.25*(
+                          ((((-1 * L_x4) * coeff2x) * (   b_LN2_C))
+                        + (((     L_z4) * coeff1z) * (   b_LN4_C)))
+                        +
+                          (((     L_x4) * coeff2x) * ( - b_LN2_C + b_LN3_C))
+                        + (((      L_z) * coeff2z) * (   b_LN4))
+                        +
+                          (((      L_x) * coeff1x) * (   b_LN2))
+                        + (((     L_z4) * coeff1z) * ( - b_LN4_C +  b_LN1_C))
+                        +
+                          (((      L_x) * coeff1x) * ( - b_LN2 - b_LN3))
+                        + (((      L_z) * coeff2z) * ( - b_LN1 - b_LN4))                   
+                        ),
+                'HH':  w1
+                        * (
+                          (((     L_x4) * coeff1x) * ( - b_SQ3_x - b_SQ4_x))
+                        + (((     L_x4) * coeff2x) * ( - b_SQ3_z + b_SQ4_z))
+                        + (((     L_z4) * coeff1z) * (   b_SQ3_x - b_SQ4_x))
+                        + (((     L_z4) * coeff2z) * (   b_SQ3_z + b_SQ4_z))
+                          )
+                        + (1-w1)
+                        * (
+                          (((     L_x4) * coeff2x) * ( - b_LN2_C + b_LN3_C))
+                        + (((      L_z) * coeff2z) * (   b_LN4))
+                        ),
+                'II':  w1
+                        * (
+                          (((     L_x4) * coeff1x) * (   b_SQ4_x))
+                        + (((     L_x4) * coeff2x) * (   b_SQ4_z))
+                        + (((     L_z4) * coeff1z) * (   b_SQ4_x))
+                        + (((     L_z4) * coeff2z) * (   b_SQ4_z))
+                          )
+                        + (1-w1)
+                        * 0.25*(
+                          (((     L_x4) * coeff2x) * (   b_LN3_C))
+                        + (((     L_z4) * coeff1z) * (   b_LN4_C))
+                        +
+                          (((     L_x4) * coeff2x) * ( - b_LN2_C + b_LN3_C))
+                        + (((      L_z) * coeff2z) * (   b_LN4))
+                        +
+                          (((      L_x) * coeff1x) * (   b_LN2))
+                        + (((     L_z4) * coeff1z) * ( - b_LN4_C +  b_LN1_C))
+                        +
+                          (((      L_x) * coeff1x) * ( - b_LN2 - b_LN3))
+                        + (((      L_z) * coeff2z) * ( - b_LN1 - b_LN4))
+                        ),
+                'DD':  w1
+                        * (
+                          (((     L_x4) * coeff1x) * (   b_SQ3_x + b_SQ1_x))
+                        + (((     L_x4) * coeff2x) * (   b_SQ3_z - b_SQ1_z))
+                        + (((     L_z4) * coeff1z) * ( - b_SQ3_x + b_SQ1_x))
+                        + (((     L_z4) * coeff2z) * ( - b_SQ3_z - b_SQ1_z))
+                          )
+                        + (1-w1)
+                        * (
+                          (((      L_x) * coeff1x) * (   b_LN2))
+                        + (((     L_z4) * coeff1z) * ( - b_LN4_C +  b_LN1_C))
+                        ),
+                'EE':  massTerm
+                        + w1
+                        * (
+                          (((-1 * L_x4) * coeff1x) * (   b_SQ1_x + b_SQ2_x + b_SQ3_x + b_SQ4_x))
+                        + (((     L_x4) * coeff2x) * (   b_SQ2_z + b_SQ3_z - b_SQ1_z - b_SQ4_z))
+                        + (((     L_z4) * coeff1z) * (   b_SQ2_x + b_SQ3_x - b_SQ1_x - b_SQ4_x))
+                        + (((-1 * L_z4) * coeff2z) * (   b_SQ1_z + b_SQ2_z + b_SQ3_z + b_SQ4_z))
+                          )
+                        + (1-w1)
+                        * (
+                          (((      L_x) * coeff1x) * ( - b_LN2 - b_LN3))
+                        + (((      L_z) * coeff2z) * ( - b_LN1 - b_LN4))
+                          ),
+                'FF':  w1
+                        * (
+                          (((     L_x4) * coeff1x) * (   b_SQ2_x + b_SQ4_x))
+                        + (((     L_x4) * coeff2x) * (   b_SQ2_z - b_SQ4_z))
+                        + (((     L_z4) * coeff1z) * ( - b_SQ2_x + b_SQ4_x))
+                        + (((     L_z4) * coeff2z) * ( - b_SQ2_z - b_SQ4_z))
+                          )
+                        + (1-w1)
+                        * (
+                          (((      L_x) * coeff1x) * (   b_LN3))
+                        + (((     L_z4) * coeff1z) * (   b_LN4_C - b_LN1_C))
+                        ),
+                'AA':  w1
+                        * (
+                          (((     L_x4) * coeff1x) * (   b_SQ1_x))
+                        + (((     L_x4) * coeff2x) * (   b_SQ1_z))
+                        + (((     L_z4) * coeff1z) * (   b_SQ1_x))
+                        + (((     L_z4) * coeff2z) * (   b_SQ1_z))
+                          )
+                        + (1-w1)
+                        * 0.25*(
+                          (((-1 * L_x4) * coeff2x) * (   b_LN2_C))
+                        + (((     L_z4) * coeff1z) * (   b_LN1_C))
+                        +
+                          (((     L_x4) * coeff2x) * ( - b_LN3_C + b_LN2_C))
+                        + (((      L_z) * coeff2z) * (   b_LN1))
+                        +
+                          (((      L_x) * coeff1x) * (   b_LN2))
+                        + (((     L_z4) * coeff1z) * ( - b_LN4_C +  b_LN1_C))
+                        +
+                          (((      L_x) * coeff1x) * ( - b_LN2 - b_LN3))
+                        + (((      L_z) * coeff2z) * ( - b_LN1 - b_LN4))
+                        ),
+                'BB':  w1
+                        * (
+                          (((     L_x4) * coeff1x) * ( - b_SQ2_x - b_SQ1_x))
+                        + (((     L_x4) * coeff2x) * ( - b_SQ2_z + b_SQ1_z))
+                        + (((     L_z4) * coeff1z) * (   b_SQ2_x - b_SQ1_x))
+                        + (((     L_z4) * coeff2z) * (   b_SQ2_z + b_SQ2_z))
+                          )
+                        + (1-w1)
+                        * (
+                          (((     L_x4) * coeff2x) * ( - b_LN3_C + b_LN2_C))
+                        + (((      L_z) * coeff2z) * (   b_LN1))
+                        ),
+                'CC': w1
+                        * (
+                          (((     L_x4) * coeff1x) * (   b_SQ2_x))
+                        + (((-1 * L_x4) * coeff2x) * (   b_SQ2_z))
+                        + (((-1 * L_z4) * coeff1z) * (   b_SQ2_x))
+                        + (((     L_z4) * coeff2z) * (   b_SQ2_z))
+                          )
+                        + (1-w1)
+                        * 0.25*(
+                          (((-1 * L_x4) * coeff2x) * (   b_LN3_C))
+                        + (((-1 * L_z4) * coeff1z) * (   b_LN1_C))
+                        +
+                          (((     L_x4) * coeff2x) * ( - b_LN3_C + b_LN2_C))
+                        + (((      L_z) * coeff2z) * (   b_LN1))
+                        +
+                          (((      L_x) * coeff1x) * (   b_LN2))
+                        + (((     L_z4) * coeff1z) * ( - b_LN4_C +  b_LN1_C))
+                        +
+                          (((      L_x) * coeff1x) * ( - b_LN2 - b_LN3))
+                        + (((      L_z) * coeff2z) * ( - b_LN1 - b_LN4))
+                        ),
+            }
+
+            return diagonals
+        
+        if (theta.min() > 0.0) and (theta.min() < np.pi/2):
+            
+            M1_diagonals = generateTiltedDiagonals(K_avg, Ax, Az, Bx, Bz)
+            M2_diagonals = generateTiltedDiagonals(0.   , Gx, Gz, Hx, Hz)
+            M3_diagonals = generateTiltedDiagonals(0.   , Ex, Ez, Fx, Fz)
+            M4_diagonals = generateTiltedDiagonals(K_avg, Cx, Cz, Dx, Dz)
+        else:
+            
+            M1_diagonals = generateDiagonals(K_avg, Ax, Az, Bx, Bz)
+            M2_diagonals = generateDiagonals(0.   , Gx, Gz, Hx, Hz)
+            M3_diagonals = generateDiagonals(0.   , Ex, Ez, Fx, Fz)
+            M4_diagonals = generateDiagonals(K_avg, Cx, Cz, Dx, Dz)
+            
         prepareDiagonals(M1_diagonals)
-
-        M2_diagonals = generateDiagonals(0.   , Gx, Gz, Hx, Hz)
         prepareDiagonals(M2_diagonals)
-
-        M3_diagonals = generateDiagonals(0.   , Ex, Ez, Fx, Fz)
         prepareDiagonals(M3_diagonals)
-
-        M4_diagonals = generateDiagonals(K_avg, Cx, Cz, Dx, Dz)
         prepareDiagonals(M4_diagonals)
 
         # self._setupBoundary(diagonals, freeSurf)
